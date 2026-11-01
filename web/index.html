@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#101a2b">
+    <meta name="description" content="AbhiVestra financial planning and scenario intelligence">
+    <title>AbhiVestra | Financial Planning</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="/" aria-label="AbhiVestra home">
+          <span class="brand-mark">A</span>
+          <span><strong>AbhiVestra</strong><small>FINANCIAL INTELLIGENCE</small></span>
+        </a>
+        <div class="sidebar-label">WORKSPACE</div>
+        <nav class="navigation" aria-label="Main navigation">
+          <button class="nav-item active" data-view="overview"><span class="nav-icon">◫</span>Executive overview</button>
+          <button class="nav-item" data-view="planning"><span class="nav-icon">▤</span>Financial plan</button>
+          <button class="nav-item" data-view="cash"><span class="nav-icon">◉</span>Cash flow</button>
+          <button class="nav-item" data-view="scenarios"><span class="nav-icon">⌁</span>Scenario studio</button>
+          <button class="nav-item" data-view="investment"><span class="nav-icon">↗</span>Capital investments</button>
+          <button class="nav-item" data-view="reports"><span class="nav-icon">▧</span>Reports & exports</button>
+        </nav>
+        <div class="sidebar-spacer"></div>
+        <div class="sidebar-note">
+          <span class="note-icon">i</span>
+          <p>Forecasts are decision-support tools, not guarantees. Review assumptions before acting.</p>
+        </div>
+        <div class="sidebar-footer"><span class="online-dot"></span> Local workspace <span class="footer-version">v0.1</span></div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div class="mobile-brand"><span class="brand-mark">A</span><strong>AbhiVestra</strong></div>
+          <div class="breadcrumbs"><span>Workspace</span><span class="crumb-divider">/</span><strong id="breadcrumb-current">Executive overview</strong></div>
+          <div class="topbar-right">
+            <span class="local-badge"><span class="online-dot"></span> Local only</span>
+            <span class="avatar" aria-label="Local user">AV</span>
+          </div>
+        </header>
+
+        <div id="toast" class="toast" role="status" aria-live="polite"></div>
+        <section id="service-state" class="service-state hidden" role="alert">
+          <h1>Workspace service unavailable</h1>
+          <p>AbhiVestra could not load its local data. Check the server output and retry; no new workspace was created.</p>
+          <button class="button button-secondary" id="retry-load" type="button">Retry</button>
+        </section>
+
+        <section id="empty-state" class="empty-state hidden">
+          <div class="empty-orb">A</div>
+          <p class="eyebrow">YOUR FINANCE WORKSPACE</p>
+          <h1>Plan with clarity.<br><span>Decide with confidence.</span></h1>
+          <p class="empty-copy">Create a company workspace to build a traceable monthly forecast. Your data stays in a local SQLite database on this machine.</p>
+          <form id="setup-form" class="setup-form">
+            <div class="form-grid">
+              <label>Company name<input name="company_name" required maxlength="120" placeholder="e.g. Northstar Labs"></label>
+              <label>Base currency<input name="currency" required minlength="3" maxlength="3" value="USD"></label>
+              <label>Forecast starts<input name="start_period" required type="month"></label>
+              <label>Monthly units sold<input name="starting_units" required type="number" min="0" step="any" placeholder="100"></label>
+              <label>Average selling price<input name="unit_price" required type="number" min="0" step="any" placeholder="250"></label>
+              <label>Variable cost per unit<input name="variable_cost_per_unit" required type="number" min="0" step="any" placeholder="90"></label>
+              <label>Monthly fixed operating expenses<input name="fixed_opex" required type="number" min="0" step="any" placeholder="12000"></label>
+              <label>Monthly payroll & benefits<input name="payroll" required type="number" min="0" step="any" placeholder="30000"></label>
+              <label>Opening cash balance<input name="opening_cash" required type="number" step="any" placeholder="100000"></label>
+              <label>Forecast horizon
+                <select name="horizon"><option value="12">12 months</option><option value="24" selected>24 months</option><option value="36">36 months</option></select>
+              </label>
+            </div>
+            <button class="button button-primary" type="submit">Create financial workspace <span aria-hidden="true">→</span></button>
+          </form>
+          <div class="sample-callout"><strong>Want the illustrative sample?</strong> Run <code>python3 seed_sample.py</code> in the project folder, then refresh. It creates a clearly labelled, synthetic 24-month Northstar model.</div>
+        </section>
+
+        <div id="workspace-content" class="workspace-content hidden">
+          <section class="view active" id="view-overview">
+            <div class="page-heading">
+              <div><p class="eyebrow">FINANCE / COMMAND CENTRE</p><h1>Executive overview</h1><p class="page-subtitle">A clear view of performance, liquidity and what may need your attention.</p></div>
+                <div class="heading-controls"><span class="period-pill" id="period-label"></span><label class="sr-only" for="overview-scenario-select">Dashboard scenario</label><select class="scenario-select" id="overview-scenario-select" aria-label="Dashboard scenario"></select></div>
+            </div>
+            <div id="alert-strip" class="alert-strip hidden"></div>
+            <div id="kpi-grid" class="kpi-grid"></div>
+            <div class="chart-grid">
+              <article class="panel chart-panel"><div class="panel-heading"><div><h2>Revenue & EBITDA</h2><p>Monthly forecast, selected scenario</p></div><span class="chart-legend"><i class="legend-revenue"></i> Revenue <i class="legend-ebitda"></i> EBITDA</span></div><div id="performance-chart" class="chart-area"></div></article>
+              <article class="panel chart-panel"><div class="panel-heading"><div><h2>Cash runway</h2><p>Closing cash against minimum reserve</p></div><span class="legend-cash"><i></i> Closing cash</span></div><div id="cash-chart" class="chart-area"></div></article>
+            </div>
+            <article class="panel table-panel"><div class="panel-heading"><div><h2>Forecast at a glance</h2><p>Monthly outputs from the same calculation engine</p></div><button class="text-button" data-navigate="planning">Review assumptions →</button></div><div class="table-wrap"><table id="overview-table"></table></div></article>
+            <article class="panel audit-panel"><div class="panel-heading"><div><h2>Recent model changes</h2><p>Assumptions and investment inputs updated in this workspace</p></div></div><div id="audit-list"></div></article>
+          </section>
+
+          <section class="view" id="view-planning">
+            <div class="page-heading"><div><p class="eyebrow">PLANNING / MODEL INPUTS</p><h1>Financial plan</h1><p class="page-subtitle">Edit the drivers behind your forecast. Every change is recorded in the local audit trail.</p></div><span class="period-pill" id="plan-period-label"></span></div>
+            <div class="callout"><strong>Model convention</strong> Revenue is units × price. Operating cash uses configurable same-period collection and payment proportions. Timing lags, inventory, and accrual working capital are not modeled in this version.</div>
+            <article class="panel"><div class="panel-heading"><div><h2>Assumptions register</h2><p>Use a change reason to keep decisions explainable.</p></div><span class="tag">BASE PLAN</span></div><div class="table-wrap"><table id="assumptions-table"></table></div></article>
+          </section>
+
+          <section class="view" id="view-cash">
+            <div class="page-heading"><div><p class="eyebrow">LIQUIDITY / MONTHLY VIEW</p><h1>Cash flow</h1><p class="page-subtitle">Cash is modeled separately from profit, including capex and financing movements.</p></div></div>
+            <div id="cash-alert" class="callout"></div>
+            <article class="panel table-panel"><div class="panel-heading"><div><h2>Cash forecast</h2><p>Opening cash + inflows − outflows = closing cash</p></div><a class="button button-secondary button-small" href="/api/v1/export.csv">Download CSV</a></div><div class="table-wrap"><table id="cash-table"></table></div></article>
+          </section>
+
+          <section class="view" id="view-scenarios">
+            <div class="page-heading"><div><p class="eyebrow">DECISION SUPPORT / WHAT-IF</p><h1>Scenario studio</h1><p class="page-subtitle">Compare independently overridden assumptions through the same financial engine.</p></div></div>
+            <article class="panel"><div class="panel-heading"><div><h2>Scenario comparison</h2><p>Scenarios inherit the base plan; overrides never change the base assumptions.</p></div><span class="tag">LIVE CALCULATION</span></div><div class="table-wrap"><table id="scenario-table"></table></div></article>
+            <div class="scenario-grid">
+              <article class="panel"><div class="panel-heading"><div><h2>Create a scenario</h2><p>Start from the current base plan.</p></div></div><form id="scenario-form" class="compact-form"><label>Scenario name<input name="name" required maxlength="80" placeholder="e.g. New pricing plan"></label><label>Optional monthly volume growth override (%)<input name="monthly_unit_growth" type="number" step="any" placeholder="Leave blank to inherit"></label><button class="button button-primary" type="submit">Create scenario</button></form></article>
+              <article class="panel"><div class="panel-heading"><div><h2>Edit a scenario driver</h2><p>Changes apply only to the selected scenario.</p></div></div><form id="scenario-edit-form" class="compact-form"><label>Scenario<select name="scenario_id" id="scenario-select"></select></label><label>Driver<select name="key"><option value="monthly_unit_growth">Monthly unit growth (%)</option><option value="unit_price">Average selling price</option><option value="variable_cost_per_unit">Variable cost per unit</option><option value="fixed_opex">Fixed operating expenses</option><option value="payroll">Payroll</option><option value="collection_rate">Cash collection proportion (%)</option></select></label><label>New value<input name="value" required type="number" step="any"></label><label>Reason<input name="reason" maxlength="500" placeholder="Why this scenario differs"></label><button class="button button-secondary" type="submit">Save scenario override</button></form></article>
+            </div>
+            <div id="scenario-insight" class="callout"></div>
+          </section>
+
+          <section class="view" id="view-investment">
+            <div class="page-heading"><div><p class="eyebrow">CAPITAL ALLOCATION / PROJECT APPRAISAL</p><h1>Capital investments</h1><p class="page-subtitle">Evaluate an illustrative incremental cash-flow stream with explicit timing conventions.</p></div></div>
+            <div class="investment-grid">
+              <article class="panel"><div class="panel-heading"><div><h2>Investment assumptions</h2><p>Cash flows repeat annually; terminal value or closure cost occurs in the final year.</p></div></div><form id="investment-form" class="compact-form"><label>Initial investment<input name="initial_investment" required type="number" min="0.01" step="any"></label><label>Annual incremental cash flow<input name="annual_cash_flow" required type="number" step="any"></label><label>Project duration (years)<input name="years" required type="number" min="1" max="40" step="1"></label><label>Discount rate (%)<input name="discount_rate" required type="number" step="any"></label><label>Terminal value / closure cost<input name="residual_value" type="number" step="any" value="0"></label><button class="button button-primary" type="submit">Calculate appraisal</button></form></article>
+              <article class="panel"><div class="panel-heading"><div><h2>Appraisal results</h2><p>IRR is withheld when no unique solution is detected.</p></div></div><div id="investment-results" class="investment-results empty-result">Enter an investment to calculate NPV, IRR and payback.</div></article>
+            </div>
+          </section>
+
+          <section class="view" id="view-reports">
+            <div class="page-heading"><div><p class="eyebrow">REPORTING / EXPORTS</p><h1>Reports & exports</h1><p class="page-subtitle">Export calculated model results for further review.</p></div></div>
+            <article class="panel export-panel"><div class="export-icon">⇩</div><div><h2>Monthly forecast CSV</h2><p>Period-level P&L and cash metrics for the base scenario, generated from the saved model.</p></div><a class="button button-primary" href="/api/v1/export.csv">Download forecast</a></article>
+            <div class="callout warning-callout"><strong>Not yet available:</strong> Excel workbooks, PDF management packs, actual-versus-budget, imports and portfolio documents are not implemented. Do not treat this CSV as an approved financial statement.</div>
+            <article class="panel"><div class="panel-heading"><div><h2>Known modelling boundaries</h2><p>Read before using the outputs for a business decision.</p></div></div><ul class="boundary-list"><li>Monthly volume changes compound; fractional units are permitted.</li><li>Cash collection and operating payment factors apply within each month. No receivables or payables balance is rolled forward.</li><li>Tax is estimated on positive pre-tax income; tax timing and jurisdiction-specific rules are not modeled.</li><li>Scenario and capital-investment outputs are illustrative and are not accounting, tax, investment, or legal advice.</li><li>This local app has no user authentication, organization membership, or multi-tenant access control.</li></ul></article>
+          </section>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
